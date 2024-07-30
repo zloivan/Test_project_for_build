@@ -1,0 +1,64 @@
+name: WebGL Build
+
+on:
+  workflow_dispatch:
+    inputs:
+      version:
+        description: 'Version of the build'
+        required: true
+        default: '1.0.0'
+      comments:
+        description: 'Comments for the build'
+        required: false
+        default: ''
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v2
+
+      - name: Setup Unity
+        uses: game-ci/unity-builder@v2
+        with:
+          unityVersion: 2022.3.38f1  # Replace with your Unity version
+          targetPlatform: WebGL
+
+      - name: Set build information
+        id: setBuildInfo
+        run: |
+          echo "version=${{ github.event.inputs.version }}" >> $GITHUB_ENV
+          echo "comments=${{ github.event.inputs.comments }}" >> $GITHUB_ENV
+          echo "branch=${GITHUB_REF}" >> $GITHUB_ENV
+
+      - name: Build project
+        id: buildProject
+        run: |
+          /opt/unity/Editor/Unity \
+            -projectPath . \
+            -buildTarget WebGL \
+            -executeMethod BuildScript.Build \
+            -logFile /dev/stdout \
+            -quit \
+            -batchmode \
+            -nographics \
+            -buildVersion ${{ github.event.inputs.version }}
+
+      - name: Upload build artifacts
+        uses: actions/upload-artifact@v2
+        with:
+          name: WebGL-Build
+          path: build/WebGL
+
+      - name: Create check run
+        uses: peter-evans/create-check-run@v2
+        with:
+          check-name: Build Summary
+          conclusion: success
+          output-title: "Build ${{ github.event.inputs.version }}"
+          output-summary: |
+            **Version:** ${{ github.event.inputs.version }}
+            **Comments:** ${{ github.event.inputs.comments }}
+            **Branch:** ${{ github.ref }}

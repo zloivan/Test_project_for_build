@@ -53,12 +53,27 @@ jobs:
           path: build/WebGL
 
       - name: Create check run
-        uses: peter-evans/create-check-run@v2
+        uses: actions/github-script@v6
         with:
-          check-name: Build Summary
-          conclusion: success
-          output-title: "Build ${{ github.event.inputs.version }}"
-          output-summary: |
-            **Version:** ${{ github.event.inputs.version }}
-            **Comments:** ${{ github.event.inputs.comments }}
-            **Branch:** ${{ github.ref }}
+          script: |
+            const { context } = require('@actions/github');
+            const checkRunId = context.runId;
+            
+            await github.rest.checks.update({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              check_run_id: checkRunId,
+              name: 'Build Summary',
+              status: 'completed',
+              conclusion: 'success',
+              output: {
+                title: `Build ${process.env.version}`,
+                summary: `
+                  **Version:** ${process.env.version}
+                  **Comments:** ${process.env.comments}
+                  **Branch:** ${process.env.branch}
+                `
+              }
+            });
+          env:
+            GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

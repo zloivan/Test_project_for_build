@@ -1,39 +1,48 @@
-name: Capture Unity License
+name: Actions 😎
 
-on:
-  workflow_dispatch:
+on: [push, pull_request]
 
 jobs:
-  capture-license:
-    name: Attempt to Capture Unity License
+  build:
+    name: Build my project ✨
     runs-on: ubuntu-latest
     steps:
-      - name: Activate Unity and Capture License
+      # Checkout
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          lfs: true
+
+      # Cache
+      - uses: actions/cache@v3
+        with:
+          path: Library
+          key: Library-${{ hashFiles('Assets/**', 'Packages/**', 'ProjectSettings/**') }}
+          restore-keys: |
+            Library-
+
+      # Test
+      - name: Run tests
+        uses: game-ci/unity-test-runner@v4
         env:
+          UNITY_LICENSE: ${{ secrets.UNITY_LICENSE }}
           UNITY_EMAIL: ${{ secrets.UNITY_EMAIL }}
           UNITY_PASSWORD: ${{ secrets.UNITY_PASSWORD }}
-        run: |
-          # Activate Unity
-          unity-editor -batchmode -nographics -logFile -quit -username "$UNITY_EMAIL" -password "$UNITY_PASSWORD"
-          
-          # Search for and copy any generated license files
-          mkdir -p ./UnityLicenses
-          sudo find / -name Unity_lic.ulf -type f 2>/dev/null | xargs -I {} sudo cp {} ./UnityLicenses/ || true
-          sudo find / -name Unity_v*.ulf -type f 2>/dev/null | xargs -I {} sudo cp {} ./UnityLicenses/ || true
-          
-          # If license files are found, show their content (be careful with sensitive information)
-          if [ "$(ls -A ./UnityLicenses)" ]; then
-            echo "License files found:"
-            ls -la ./UnityLicenses
-            echo "License file contents (first 10 lines):"
-            head -n 10 ./UnityLicenses/*
-          else
-            echo "No license files found."
-          fi
-
-      - name: Upload License Files
-        uses: actions/upload-artifact@v2
         with:
-          name: UnityLicenses
-          path: ./UnityLicenses
-          if-no-files-found: ignore
+          githubToken: ${{ secrets.GITHUB_TOKEN }}
+
+      # Build
+      - name: Build project
+        uses: game-ci/unity-builder@v4
+        env:
+          UNITY_LICENSE: ${{ secrets.UNITY_LICENSE }}
+          UNITY_EMAIL: ${{ secrets.UNITY_EMAIL }}
+          UNITY_PASSWORD: ${{ secrets.UNITY_PASSWORD }}
+        with:
+          targetPlatform: WebGL
+
+      # Output
+      - uses: actions/upload-artifact@v3
+        with:
+          name: Build
+          path: build

@@ -2,6 +2,15 @@ name: Actions 😎
 
 on:
   workflow_dispatch:
+    inputs:
+      build_addressables:
+        description: 'Build Addressables before main build?'
+        required: true
+        default: 'no'
+        type: choice
+        options:
+          - 'yes'
+          - 'no'
 
 jobs:
   build:
@@ -21,6 +30,13 @@ jobs:
           key: Library-${{ hashFiles('Assets/**', 'Packages/**', 'ProjectSettings/**') }}
           restore-keys: |
             Library-
+
+      # Conditional Addressables Build
+      - name: Build Addressables for WebGL
+        if: ${{ inputs.build_addressables == 'yes' }}
+        run: |
+          /opt/unity/Editor/Unity -quit -batchmode -projectPath . -executeMethod AddressableAssetSettings.BuildPlayerContent -buildTarget WebGL -logFile /dev/stdout
+
       # Build
       - name: Build project
         uses: game-ci/unity-builder@v4

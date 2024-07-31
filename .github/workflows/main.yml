@@ -1,0 +1,39 @@
+name: Capture Unity License
+
+on:
+  workflow_dispatch:
+
+jobs:
+  capture-license:
+    name: Attempt to Capture Unity License
+    runs-on: ubuntu-latest
+    steps:
+      - name: Activate Unity and Capture License
+        env:
+          UNITY_EMAIL: ${{ secrets.UNITY_EMAIL }}
+          UNITY_PASSWORD: ${{ secrets.UNITY_PASSWORD }}
+        run: |
+          # Activate Unity
+          unity-editor -batchmode -nographics -logFile -quit -username "$UNITY_EMAIL" -password "$UNITY_PASSWORD"
+          
+          # Search for and copy any generated license files
+          mkdir -p ./UnityLicenses
+          sudo find / -name Unity_lic.ulf -type f 2>/dev/null | xargs -I {} sudo cp {} ./UnityLicenses/ || true
+          sudo find / -name Unity_v*.ulf -type f 2>/dev/null | xargs -I {} sudo cp {} ./UnityLicenses/ || true
+          
+          # If license files are found, show their content (be careful with sensitive information)
+          if [ "$(ls -A ./UnityLicenses)" ]; then
+            echo "License files found:"
+            ls -la ./UnityLicenses
+            echo "License file contents (first 10 lines):"
+            head -n 10 ./UnityLicenses/*
+          else
+            echo "No license files found."
+          fi
+
+      - name: Upload License Files
+        uses: actions/upload-artifact@v2
+        with:
+          name: UnityLicenses
+          path: ./UnityLicenses
+          if-no-files-found: ignore
